@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/ngamux/ctx"
@@ -9,20 +10,31 @@ import (
 
 func main() {
 	mux := ngamux.New()
-	mux.Get("/", func(rw http.ResponseWriter, r *http.Request) error {
-		return ngamux.Res(rw).Text("GET /")
+
+	mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /")
 	})
 
-	mux.Post("/", func(rw http.ResponseWriter, r *http.Request) error {
-		c := ctx.New(rw, r)
+	mux.Post("/", func(w http.ResponseWriter, r *http.Request) {
+		c := ctx.New(w, r)
 
-		in := map[string]string{}
-		err := c.Req().JSON(&in)
-		if err != nil {
-			c.Res().Status(http.StatusBadGateway).Json(err.Error())
+		in := make(map[string]string)
+		if err := c.Req().JSON(&in); err != nil {
+			c.Res().
+				Status(http.StatusBadRequest).
+				JSON(ngamux.Map{
+					"error": err.Error(),
+				})
+			return
 		}
-		return c.Res().Json(in)
+
+		c.Res().Status(http.StatusCreated).JSON(in)
 	})
 
-	http.ListenAndServe(":8080", mux)
+	log.Println("Server running on :8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
+	}
 }
