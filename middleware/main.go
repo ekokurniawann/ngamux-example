@@ -2,44 +2,53 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
-	"github.com/ngamux/middleware/ping"
 	"github.com/ngamux/ngamux"
 )
 
-func globalMiddleware(next ngamux.Handler) ngamux.Handler {
-	return func(rw http.ResponseWriter, r *http.Request) error {
+func globalMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("hello from global middleware")
-		return next(rw, r)
+		next(w, r)
 	}
 }
 
-func routeMiddleware(next ngamux.Handler) ngamux.Handler {
-	return func(rw http.ResponseWriter, r *http.Request) error {
+func routeMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("hello from route middleware")
-		return next(rw, r)
+		next(w, r)
 	}
 }
 
 func main() {
 	mux := ngamux.New()
-	mux.Use(ping.New())
 	mux.Use(globalMiddleware)
 
-	mux.Get("/", routeMiddleware(func(rw http.ResponseWriter, r *http.Request) error {
-		fmt.Println("hello / handler")
-		return ngamux.Res(rw).Text("GET /")
-	}))
-
-	mux.Get("/users", ngamux.WithMiddlewares(routeMiddleware)(func(rw http.ResponseWriter, r *http.Request) error {
-		fmt.Println("hello from /users handler")
-		return ngamux.Res(rw).Text("GET /users")
-	}))
-
-	mux.With(routeMiddleware).Get("/products", func(rw http.ResponseWriter, r *http.Request) error {
-		return ngamux.Res(rw).Text("GET /products")
+	mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("hello from root handler")
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /")
 	})
 
-	http.ListenAndServe(":8080", mux)
+	mux.Get("/users", ngamux.WithMiddlewares(routeMiddleware)(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("hello from users handler")
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /users")
+	}))
+
+	mux.With(routeMiddleware).Get("/products", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("hello from products handler")
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /products")
+	})
+
+	log.Println("Server running on :8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
+	}
 }

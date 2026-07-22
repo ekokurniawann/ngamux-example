@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/ngamux/ngamux"
@@ -8,15 +9,23 @@ import (
 
 func main() {
 	mux := ngamux.New()
+
 	users := mux.Group("/users")
-	users.Get("/", func(rw http.ResponseWriter, r *http.Request) error {
-		return ngamux.Res(rw).Text("GET /users")
+	users.Get("", func(w http.ResponseWriter, r *http.Request) {
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /users")
 	})
 
 	admins := users.Group("/admins")
-	admins.Get("/", func(rw http.ResponseWriter, r *http.Request) error {
-		return ngamux.Res(rw).Text("GET /users")
+	admins.Get("", func(w http.ResponseWriter, r *http.Request) {
+		ngamux.Res(w).
+			Status(http.StatusOK).
+			Text("GET /users/admins")
 	})
 
-	http.ListenAndServe(":8080", mux)
+	log.Println("Server running :8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/ngamux/ctx"
@@ -11,23 +12,35 @@ import (
 func main() {
 	mux := ngamux.New()
 
-	mux.Get("/", func(rw http.ResponseWriter, r *http.Request) error {
-		return ngamux.Res(rw).
+	mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		ngamux.Res(w).
 			Status(http.StatusOK).
 			Text("GET /")
 	})
 
-	mux.Get("/users", func(rw http.ResponseWriter, r *http.Request) error {
-		fmt.Fprintln(rw, "GET /users")
-		return nil
+	mux.Get("/users", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "GET /users")
 	})
 
-	mux.Get("/products", func(rw http.ResponseWriter, r *http.Request) error {
-		c := ctx.New(rw, r)
-		return c.Res().
-			Status(201).
+	mux.Get("/products", func(w http.ResponseWriter, r *http.Request) {
+		c := ctx.New(w, r)
+		c.Res().
+			Status(http.StatusOK).
 			Text("GET /products")
 	})
 
-	http.ListenAndServe(":8080", mux)
+	mux.Get("/api/status", func(w http.ResponseWriter, r *http.Request) {
+		c := ctx.New(w, r)
+		c.Res().
+			Status(http.StatusOK).
+			JSON(ngamux.Map{
+				"status": "ok",
+			})
+	})
+
+	log.Println("Server running on :8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
+	}
 }
